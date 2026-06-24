@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Visualisasi dataset Titanic menggunakan Flask dan Pandas. Framework: python">
+    <title>PBL0203 — Titanic Dataset Viewer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d2e;
+            --surface2: #232740;
+            --border: #2e3250;
+            --accent: #7c6af7;
+            --accent2: #a78bfa;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --pclass1: #facc15;
+            --pclass2: #a78bfa;
+            --pclass3: #9ca3af;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ---- Header ---- */
+        header {
+            background: linear-gradient(135deg, #1a1d2e 0%, #0f1117 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 2rem 2rem 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+        header::before {
+            content: '';
+            position: absolute;
+            top: -40px; right: -40px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(124,106,247,0.15) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .header-inner { max-width: 1200px; margin: 0 auto; position: relative; }
+        .badge {
+            display: inline-block;
+            background: rgba(124,106,247,0.15);
+            color: var(--accent2);
+            border: 1px solid rgba(124,106,247,0.3);
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            padding: 0.25rem 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        header h1 {
+            font-size: 1.9rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #7c6af7, #a78bfa, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        header p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 0.4rem;
+        }
+
+        /* ---- Main layout ---- */
+        main { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; }
+
+        /* ---- Stats bar ---- */
+        .stats {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            flex: 1;
+            min-width: 120px;
+            transition: border-color 0.2s;
+        }
+        .stat-card:hover { border-color: var(--accent); }
+        .stat-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-value { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; }
+        .stat-value.purple { color: var(--accent2); }
+        .stat-value.green  { color: var(--success); }
+        .stat-value.blue   { color: var(--info); }
+        .stat-value.yellow { color: var(--pclass1); }
+
+        /* ---- Search ---- */
+        .search-form {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .search-wrap {
+            position: relative;
+            flex: 1;
+        }
+        .search-wrap svg {
+            position: absolute;
+            left: 0.9rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+        #search-input {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.7rem 1rem 0.7rem 2.6rem;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        #search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(124,106,247,0.2);
+        }
+        #search-input::placeholder { color: var(--text-muted); }
+        .btn-search {
+            background: linear-gradient(135deg, var(--accent), #6059e0);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            padding: 0.7rem 1.5rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        .btn-search:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-search:active { transform: translateY(0); }
+        .btn-clear {
+            background: var(--surface);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.7rem 1rem;
+            font-size: 0.9rem;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .btn-clear:hover { border-color: var(--accent2); color: var(--text); }
+        select[name="limit"] {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.7rem 1rem;
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            cursor: pointer;
+        }
+        select[name="limit"]:focus {
+            border-color: var(--accent);
+        }
+
+        /* ---- Result info ---- */
+        .result-info {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+        .result-info strong { color: var(--text); }
+        .query-badge {
+            background: rgba(124,106,247,0.15);
+            color: var(--accent2);
+            border-radius: 6px;
+            padding: 0.1rem 0.5rem;
+            font-weight: 600;
+        }
+
+        /* ---- Table wrapper ---- */
+        .table-wrap {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: auto;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        thead {
+            background: var(--surface2);
+        }
+        th {
+            text-align: left;
+            padding: 0.85rem 1.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        td {
+            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid rgba(46,50,80,0.5);
+            color: var(--text);
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+        tr:last-child td { border-bottom: none; }
+        tbody tr:hover td { background: rgba(124,106,247,0.05); }
+
+        /* pills */
+        .pill {
+            display: inline-block;
+            padding: 0.2rem 0.65rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+        .pill-survived { background: rgba(16,185,129,0.12); color: var(--success); }
+        .pill-died     { background: rgba(239,68,68,0.12); color: var(--danger); }
+        .pill-class1   { background: rgba(250,204,21,0.12); color: var(--pclass1); }
+        .pill-class2   { background: rgba(167,139,250,0.12); color: var(--pclass2); }
+        .pill-class3   { background: rgba(156,163,175,0.12); color: var(--pclass3); }
+
+        /* ---- No data ---- */
+        .no-data {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+        .no-data svg { margin-bottom: 1rem; opacity: 0.4; }
+        .no-data p { font-size: 0.95rem; }
+
+        /* ---- Footer ---- */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            border-top: 1px solid var(--border);
+            margin-top: 3rem;
+        }
+        footer a { color: var(--accent2); text-decoration: none; }
+        /* ---- Pagination ---- */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .btn-page {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.6rem 1.2rem;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn-page:hover {
+            border-color: var(--accent);
+            color: var(--accent2);
+        }
+        .btn-page[disabled] {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .page-info {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-inner">
+        <span class="badge">python · Flask · Pandas</span>
+        <h1>🚢 Titanic Dataset Viewer</h1>
+        <p>PBL0203 — PABW GN2526 · Sumber dataset: <a href="https://www.kaggle.com/c/titanic" style="color:var(--accent2)">Kaggle — Titanic: Machine Learning from Disaster</a></p>
+    </div>
+</header>
+
+<main>
+    <!-- Stats -->
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-label">Total Penumpang</div>
+            <div class="stat-value purple">{{ total }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Selamat (Survived=1)</div>
+            <div class="stat-value green">
+                {{ rows | map(attribute=1) | select('equalto', 1) | list | length }}
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Kelas 1</div>
+            <div class="stat-value yellow">
+                {{ rows | map(attribute=2) | select('equalto', 1) | list | length }}
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Kelas 2</div>
+            <div class="stat-value blue">
+                {{ rows | map(attribute=2) | select('equalto', 2) | list | length }}
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Kelas 3</div>
+            <div class="stat-value" style="color:var(--pclass3)">
+                {{ rows | map(attribute=2) | select('equalto', 3) | list | length }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Search form -->
+    <form class="search-form" method="GET" action="/pbl0203">
+        <div class="search-wrap">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+                type="text"
+                id="search-input"
+                name="q"
+                placeholder="Cari berdasarkan nama, tiket, atau kabin…"
+                value="{{ query }}"
+                autocomplete="off"
+            >
+        </div>
+        <select name="limit" onchange="this.form.submit()">
+            <option value="10" {% if limit == '10' %}selected{% endif %}>10 baris</option>
+            <option value="50" {% if limit == '50' or not limit %}selected{% endif %}>50 baris</option>
+            <option value="100" {% if limit == '100' %}selected{% endif %}>100 baris</option>
+            <option value="all" {% if limit == 'all' %}selected{% endif %}>Semua Data</option>
+        </select>
+        <button type="submit" class="btn-search">Cari</button>
+        {% if query %}
+        <a href="/pbl0203" class="btn-clear">✕ Reset</a>
+        {% endif %}
+    </form>
+
+    <!-- Result info -->
+    {% if query %}
+    <p class="result-info">
+        Menampilkan <strong>{{ total }}</strong> baris yang cocok dengan
+        <span class="query-badge">{{ query }}</span>
+    </p>
+    {% else %}
+    <p class="result-info">Menampilkan <strong>{{ total }}</strong> baris dari dataset Titanic.</p>
+    {% endif %}
+
+    <!-- Table -->
+    <div class="table-wrap">
+        {% if rows %}
+        <table>
+            <thead>
+                <tr>
+                    {% for col in columns %}
+                    <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    {% for cell in row %}
+                    <td>
+                        {% if loop.index0 == 1 %} <!-- Survived -->
+                            {% if cell == 1 %}
+                                <span class="pill pill-survived">Survived</span>
+                            {% else %}
+                                <span class="pill pill-died">Died</span>
+                            {% endif %}
+                        {% elif loop.index0 == 2 %} <!-- Pclass -->
+                            {% if cell == 1 %}
+                                <span class="pill pill-class1">Class 1</span>
+                            {% elif cell == 2 %}
+                                <span class="pill pill-class2">Class 2</span>
+                            {% elif cell == 3 %}
+                                <span class="pill pill-class3">Class 3</span>
+                            {% else %}
+                                {{ cell }}
+                            {% endif %}
+                        {% elif loop.index0 == 9 %} <!-- Fare -->
+                            {% if cell %}
+                                ${{ "{:,.2f}".format(cell) }}
+                            {% endif %}
+                        {% elif cell is float and cell != cell %} <!-- Check for NaN -->
+                            <span style="color:var(--border)">-</span>
+                        {% else %}
+                            {{ cell }}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-data">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                <line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+            <p>Tidak ada data yang cocok dengan pencarian <strong>"{{ query }}"</strong>.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        <a href="?q={{ query }}&limit={{ limit }}&page={{ page - 1 }}" class="btn-page" {% if page <= 1 %}disabled{% endif %}>← Sebelumnya</a>
+        <span class="page-info">Halaman <strong>{{ page }}</strong> dari <strong>{{ total_pages }}</strong></span>
+        <a href="?q={{ query }}&limit={{ limit }}&page={{ page + 1 }}" class="btn-page" {% if page >= total_pages %}disabled{% endif %}>Selanjutnya →</a>
+    </div>
+    {% endif %}
+</main>
+
+<footer>
+    PBL0203 — PABW GN2526 &nbsp;|&nbsp; Framework: <strong>python</strong> (Flask) &nbsp;|&nbsp;
+    Dataset: <a href="https://www.kaggle.com/c/titanic">Titanic — Kaggle</a>
+</footer>
+
+</body>
+</html>
